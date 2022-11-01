@@ -1,0 +1,24 @@
+upstream app {
+{% for server in item.server_app %}
+  server {{ server }}:8080;
+{% endfor %}
+}
+
+server {       
+       listen {{ item.listen }};
+       listen [::]:{{ item.listen }};
+       server_name {{ item.server_lb }};
+
+       ssl_certificate /etc/letsencrypt/live/{{ item.server_lb }}/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/{{ item.server_lb }}/privkey.pem;
+
+
+       location / {
+         proxy_pass http://app;
+         
+         
+       }
+
+       root {{ item.root }};
+       index {{ item.index | join(' ') }};
+}

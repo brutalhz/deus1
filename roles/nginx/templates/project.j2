@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Fix requirements
+cd {{ project_dir }}
+echo "jinja2==3.0.3
+itsdangerous==2.0.1
+werkzeug==2.0.3
+SQLAlchemy<1.4.0" >> requirements.txt
+
+# Installation
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Initalize and seed the database
+flask db upgrade
+python seed.py
+pip install python-dotenv
+
+# Running tests
+python -m unittest discover
+
+# Running on a production server on port 8000 as service
+pip install -r requirements-server.txt
+gunicorn app:app -b 0.0.0.0:8000 &

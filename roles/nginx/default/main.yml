@@ -1,0 +1,21 @@
+project_dir: /home/vagrant/flask-project-01
+myenv: venv
+sites:
+  - server_lb: proxy.local
+    server_app:
+    - app.local
+    listen: 80
+    index:
+    - index.php
+    - index.html
+    - index.htm
+    - index.nginx-debian.html
+    root: "/usr/share/nginx/html"
+nginx_conf: lb_nginx
+
+certbot_auto_renew: true
+certbot_admin_email: denis.iddqd@gmail.com
+certbot_script: /usr/bin/certbot
+certbot_output_dir: "/etc/letsencrypt/live/{{ inventory_hostname }}"
+update_apt_cache: true
+

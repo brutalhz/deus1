@@ -1,0 +1,10 @@
+server {       
+       listen 8080;
+       server_name {{ inventory_hostname }};
+
+       root /usr/share/nginx/html;
+       index index.php index.html index.htm index.nginx-debian.html;
+
+       location / {
+         proxy_pass http://{{ inventory_hostname }}:8000;
+}

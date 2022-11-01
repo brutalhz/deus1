@@ -1,0 +1,87 @@
+- name: git
+  apt:
+    name: git
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: clone project
+  git:
+    repo: https://gitfront.io/r/deusops/Fsjok1dx89xG/flask-project-01.git
+    dest: "{{ project_dir }}"
+  when: inventory_hostname in groups['app']
+
+- name: install list dependents
+  apt:
+    pkg:
+    - libpq-dev
+    - gcc
+    - python3.8
+    - pip
+    - python3.8-venv
+  when: inventory_hostname in groups['app']
+
+- name: Project script
+  template:
+    src: project.j2
+    dest: "{{ project_dir }}/project.sh"
+    owner: root
+    group: root
+    mode: 0744
+  when: inventory_hostname in groups['app']
+
+- name: Install project
+  command: "{{ project_dir }}/project.sh"
+  changed_when: false
+  when: inventory_hostname in groups['app']
+
+- name: Install nginx Debian/Ubuntu
+  apt:
+    name: nginx
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+  notify: start nginx
+
+- name: Write the vhosts config file
+  template:
+    src: "{{ nginx_conf }}.j2"
+    dest: "/etc/nginx/conf.d/{{ nginx_conf }}.conf"
+  when: ansible_os_family == "Debian"
+  with_items: "{{ sites }}"
+  notify: reload nginx
+
+- name: Install Certbot for Ubuntu
+  apt:
+    update_cache: "{{ update_apt_cache }}"
+    state: present
+    name:
+      - certbot
+      - python3-certbot-nginx
+  when: ansible_os_family == "Debian"
+  tags: packages
+
+- name: Check if Nginx exists
+  stat: path=/etc/init.d/nginx
+  register: nginx_status
+
+- name: Ensure Nginx is stopped
+  service: name=nginx state=stopped
+  when: nginx_status.stat.exists
+
+- name: Install certbot and generate cert
+  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --standalone --email {{ certbot_admin_email }} -d {{ inventory_hostname }}"
+  args:
+    creates: "{{ certbot_output_dir }}"
+  when: ansible_os_family == "Debian"
+
+- name: Ensure Nginx is started
+  service: name=nginx state=started
+  when: nginx_status.stat.exists
+
+- name: Ensure a cron job to auto-renew the cert exists
+  cron: name="daily auto renew cert"
+        special_time=daily
+        job="{{ certbot_script }} renew --standalone --no-self-upgrade --post-hook \"systemctl reload nginx\" --quiet"
+        state=present
+  when: certbot_auto_renew
